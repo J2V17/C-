@@ -1,6 +1,6 @@
-# Workshop #1: Dictionary
+# Workshop #2: RPG Game
 
-In this workshop, you will create a dictionary application that will allow the client to find the definition(s) of a word in English. The application will load the list of words and their definitions from a text file; although the provided file is for English language (a version of [*The Gutenberg Webster's Unabridged Dictionary*](https://www.gutenberg.org/ebooks/673) in `csv` format), the application should work with dictionary in other languages.
+In this workshop, you will create an application that implements a rudimentary structure of an RPG game. The game will feature multiple classes of characters, each one capable of using weapons and special abilities in their quest to defeat their enemies. Each player will be part of a team and can join a guild for extra bonuses.
 
 
 
@@ -35,19 +35,7 @@ To check the output, use a program that can compare text files.  Search online f
 
 ## Dictionary
 
-This application loads a set of words from a file in `csv` format (comma separated values), stores them in memory, and performs some operations on them.  The application will also measure the duration of certain operations, allowing the user to compare their performance.  The time it takes to complete an operation will depend on the machine where the application is running; however, the relative difference in performance between various operation should hold regardless of the underlying hardware.
-
-The input file will contain a large set of records; each record is stored on a single line in the format:
-
-```txt
-word,pos,definition
-```
-
-Where:
-
-- `word` is the word being defined (might contain spaces).
-- `pos` is the part of speech.
-- `definition` is the definition of the word.
+This application will implement three different classes of characters that the player can choose at the begining of the game and will simulate the fight between two players.
 
 Put all the global variables, global functions/operator overloads, and types inside the `seneca` namespace.
 
@@ -60,183 +48,357 @@ Put all the global variables, global functions/operator overloads, and types ins
 
 
 
-### `settings` Module
+### `abilities` Module (supplied)
 
-The `settings` will contain functionality regarding configuration of the application. Design and code a structure named `Settings`; in the header, *declare* a global variable of this type named `g_settings` and define it in the implementation file.
 
-For simplicity reasons, this type will contain only public data-members and no member-functions.
+This module contains the logic of some special abilitites that a character can have in the game.  For simplicity reasons, the logic is kept trivial.
+
+**Do not modify this module!**  Study the code supplied and make sure you understand it.
+
+
+
+### `weapons` Module (supplied)
+
+
+This module contains the logic the weapons that a character can use in battle.  For simplicity reasons, the logic is kept trivial.
+
+**Do not modify this module!**  Study the code supplied and make sure you understand it.
+
+
+
+### `health` Module (supplied)
+
+
+This module contains the logic related to handling the health of a character when taking damage.  For simplicity reason, the logic is kept trivial.
+
+A character can have health stored as a single number and healing or taking damage will be implemented as the arithmetic operations; or it can have more complex behaviour:
+
+- *infinite health*, where the health is never changed regardless of damage taken.
+- *super health*, where the damage is halved.
+
+A programmer could expand on this and implement more complex behaviour in future versions of the game.
+
+**Do not modify this module!**  Study the code supplied and make sure you understand it.
+
+
+
+### `character` Module (supplied)
+
+
+This module contain the interface that every character must implement. This class sits at the top of the *character* hierarchy. Look in the `character.h` file to see a description of each function available.
+
+![The Character Hierarchy](characters.png)
+
+**Do not modify this module!**  Study the code supplied and make sure you understand it.
+
+
+
+
+
+
+
+### `characterTpl` Module
+
+Implement a templated class named `CharacterTpl`, derived from the `Character` (supplied). The `CharacterTpl` will add health and health manipulation functions to a character. The health can have a fundamental numerical type (i.e., `int`, `double`, etc.) for simple health operations, or a custom type (e.g., `seneca::InfinitHealth`, `seneca::SuperHealth`) allowing programmer to implement complex behaviour in handling damage or recovery.
+
+Template parameters:
+
+- `T`: the type of the object storing the health.
+
+
+#### Private Members
+
+- `m_healthMax`: an integer representing the maximum health this character can have
+- `m_health`: an object of type `T` representing the current health of the character. When this value gets to 0, the character died.
 
 #### Public Members
 
-- `m_show_all` as a Boolean attribute; when `true`, if a word has multiple definitions, all definitions should be printed on screen, otherwise only the first definition should be shown (default `false`).
-- `m_verbose` as a Boolean attribute; when `true`, print to screen the part-of-speech of a word if it exists (default `false`).
-- `m_time_units` as a `std::string` attribute; stores the time units to be used when printing duration of various operations. Possible values are `seconds`, `milliseconds`, `microseconds`, `nanoseconds` (default `nanoseconds`).
-
-
-
-### `event` Module
-
-Design and code a class named `Event` that stores information about a single event that happened during the execution of the program. At minimum, this class should store the name of the event (as a string) and its duration (as an object of type `std::chrono::nanoseconds`); add any other private members that your design requires.
-
-#### Public Members
-
-- a default constructor
-- `Event(const char* name, const std::chrono::nanoseconds& duration)`: initializes the current instance with the values of the parameters.
-
-#### Friend Helpers
-
-- `operator<<`: print to screen an `Event` using the format:
+- a custom constructor that receives the name of the character and the maximum health; initializes the current instance with the values of the paameters and set the current health to maximum.
+- `void takeDamage(int dmg) override`: reduces the current health by the value of the parameter. **In this design, it is assumed that type `T` supports `-=` operation.**  After taking damage, if the character died, print:
 
   ```txt
-  COUNTER: EVENT_NAME -> DURATION TIME_UNITS
+      [NAME] has been defeated!<endl>
   ```
 
-  where
+  If the character is still alive, print:
 
-  - `COUNTER` is a *right aligned* field of size 2, that holds the number of times that this operator has been called (use a local-to-function variable that remains in memory for the lifetime of the program) **Do not use global/member variables to store the counter!**
-  - `EVENT_NAME` is a *right aligned* field of size 40 with the name of the event
-  - `DURATION` is a *right aligned* field with the duration of the event. The size of this field depends on the time units stored in the global settings:
+  ```txt
+      [NAME] took [DAMAGE] damage, [HEALTH] health remaining.<endl>
+  ```
 
-    Time Units   | Size of the field
-    -------------|------------------
-    Seconds      |  2
-    Milliseconds  |  5
-    Microseconds |  8
-    Nanoseconds  | 11
+- `int getHealth() const override`: returns current health. **In this design, it is assumed that `T` supports conversion to `int` using `static_cast`.**
+- `int getHealthMax() const override`: returns current maximum health.
+- `void setHealth(int health) override`: sets the current health to the value received as parameter. **In this design, it is assumed that `T` has assignment to `int` operator overloaded.**
+- `void setHealthMax(int health) override`: sets the maximum health and current health to the value of the parameter.
+
+
+
+### `barbarian` Module
+
+Implement a templated class named `Barbarian`, derived from the `CharacterTpL<T>`. The `Barbarian` class is a concrete class implementing barbarian-specific logc.
+
+Template parameters:
+
+- `T`: the type of the object storing the health. This type is passed to the base class.
+- `Ability_t`: the type implementing the special abilities that this barbarian has (e.g., `Fireball`, `Healing`, etc.).
+- `Weapon_t`: the type implementing the weapons the barbarian will handle (e.g., `Sword`, `Bow`, etc.).
+
+
+#### Private Members
+
+- `m_baseDefense`: a number representing the basic defense of this character
+- `m_baseAttack`: a number representing the basic attack power of this character
+- `m_ability`: and object of type `Ability_t` representing the special ability of this character.
+- `m_weapon`: an array of two objects of type `Weapon_t`, representing the two weapons the character can use in battle.
+
+
+#### Public Members
+
+- `Barbarian(const char* name, int healthMax, int baseAttack, int baseDefense, Weapon_t primaryWeapon, Weapon_t secondaryWeapon)`: initializes a new object to the values received as parameters.
+- `int getAttackAmnt() const`: returns the damage that character can do in an attack, using the formula:
+
+  ```math
+  BASE\_ATTACK + \frac{WEAPON_1\_DAMAGE}{2} + \frac{WEAPON_2\_DAMAGE}{2}
+  ```
+
+  In this design, it is assumed that `Weapon_t` template type supports conversion to `double` operator that will return the damage the weapon can do; this operator can be used with `static_cast`.
+- `int getDefenseAmnt() const`: return the base defense value.
+- `Character* clone() const`: dynamically creates a copy of the current instance and returns its address to the client.
+- `void attack(Character* enemy)`: attacks the enemy received as parameter and inflicts damage to it.
+  - print:
+
+    ```txt
+    [NAME] is attacking [ENEMY_NAME].<endl>
+    ```
+
+  - use the special ability to activate any beneficial effects on self. **In this design, it is assumed that the type `Ability_t` has a member function named `useAbility(Character*)`** that will activate the special ability; call this function on `m_ability` member and pass the address of the current instance as a parameter.
+  - retrieve the damage this character can do using the function `getAttackAmnt`.
+  - enhance the damage dealt with any effects that the special ability could apply. **In this design, it is assumed that `Ability_t` has a member function named `transformDamageDealt(int&)`** that will enhance the damage this character can do; call this function on `m_ability` member and pass the damage retrieved earlier.
+
+  - print:
+
+    ```txt
+        Barbarian deals [ENHANCED_DAMAGE] melee damage!<endl>
+    ```
   
-  - `TIME_UNITS` a string representing the time units for displayed values
+  - apply the damage to the enemy, by calling the `takeDamage()` function on the parameter.
+
+- `void takeDamage(int dmg)`: some other character inflicts damage to the current barbarian in the amount specified as parameter. This function will modify the damage received using the defense capabilities and the special ability, before calling the base class member to update the health.
+
+  - print:
+
+    ```txt
+    [NAME] is attacked for [DAMAGE] damage.<endl>
+        Barbarian has a defense of [DEFENSE]. Reducing damage received.<endl>
+    ```
+  
+  - the barbarian is able to block some of the damage: subtract the defense amount from the parameter. The new value cannot be less than 0.
+  - use the special ability to further reduce the damage taken. **In this design, it is assumed that `Ability_t` has a member function named `transformDamageReceived(int&)`** that could block more damage; call this function on `m_ability` member and pass the damage calculated earlier.
+  - call `takeDamage()` from the base class and pass the calculated damage to update the health after taking damage.
 
 
 
-### `logger` Module
 
-Design and code a class named `Logger` that manages a dynamically allocated collection of events *in the form of an array*. At minimum, this class should store the address of the array; add any other private members that your design requires.
+### `archer` Module
 
-This class will not support copy operations -- *disable them*.
+Implement a templated class named `Archer`, derived from the `CharacterTpL<seneca::SuperHealth>` (all archers have superhealth). The `Archer` class is a concrete class implementing archer-specific logc. Archers do not have any special ability.
+
+Template parameters:
+
+- `Weapon_t`: the type implementing the weapons the barbarian will handle (e.g., `Crossbow`, `Bow`, etc.).
+
+
+#### Private Members
+
+- `m_baseDefense`: a number representing the basic defense of this character
+- `m_baseAttack`: a number representing the basic attack power of this character
+- `m_weapon`: an object of type `Weapon_t` representing the weapon the character can use in battle.
+
+
+#### Public Members
+
+- `Archer(const char* name, int healthMax, int baseAttack, int baseDefense, Weapon_t weapon)`: initializes a new object to the values received as parameters.
+- `int getAttackAmnt() const`: returns the damage that character can do in an attack, using the formula:
+
+  ```math
+  1.3 \times BASE\_ATTACK
+  ```
+
+  In this implementation the weapon is ignored.
+
+- `int getDefenseAmnt() const`: return the defense of this archer, using the formula:
+
+  ```math
+  1.2 \times BASE\_DEFENSE
+  ```
+
+- `Character* clone() const`: dynamically creates a copy of the current instance and returns its address to the client.
+- `void attack(Character* enemy)`: attacks the enemy received as parameter and inflicts damage to it.
+  - print:
+
+    ```txt
+    [NAME] is attacking [ENEMY_NAME].<endl>
+    ```
+
+  - retrieve the damage this character can do using the function `getAttackAmnt`.
+  - print:
+
+    ```txt
+        Archer deals [ENHANCED_DAMAGE] ranged damage!<endl>
+    ```
+  
+  - apply the damage to the enemy, by calling the `takeDamage()` function on the parameter.
+
+- `void takeDamage(int dmg)`: some other character inflicts damage to the current archer in the amount specified as parameter. This function will modify the damage received using the defense capabilities, before calling the base class member to update the health.
+
+  - print:
+
+    ```txt
+    [NAME] is attacked for [DAMAGE] damage.<endl>
+        Archer has a defense of [DEFENSE]. Reducing damage received.<endl>
+    ```
+  
+  - the archer is able to block some of the damage: subtract the defense amount from the parameter. The new value cannot be less than 0.
+  - call `takeDamage()` from the base class and pass the calculated damage to update the health after taking damage.
+
+
+
+
+### `rogue` Module
+
+Implement a templated class named `Rogue`, derived from the `CharacterTpL<T>`. The `Rogue` class is a concrete class implementing barbarian-specific logc. A rogue will always use a dagger as a wapon, and two special abilities.
+
+Template parameters:
+
+- `T`: the type of the object storing the health. This type is passed to the base class.
+- `FirstAbility_t`: the type implementing the first special ability that this rogue has (e.g., `Fireball`, `Healing`, etc.).
+- `SecondAbility_t`: the type implementing the second special ability that this rogue has (e.g., `Fireball`, `Healing`, etc.).
+
+
+#### Private Members
+
+- `m_baseDefense`: a number representing the basic defense of this character
+- `m_baseAttack`: a number representing the basic attack power of this character
+- `m_firstAbility`: and object of type `FirstAbility_t` representing the first special ability of this character.
+- `m_secondAbility`: and object of type `SecondAbility_t` representing the second special ability of this character.
+- `m_weapon`: an object of type `seneca::Dagger`, representing the two weapons the character can use in battle.
+
+
+#### Public Members
+
+- `Rogue(const char* name, int healthMax, int baseAttack, int baseDefense)`: initializes a new object to the values received as parameters.
+- `int getAttackAmnt() const`: returns the damage that character can do in an attack, using the formula:
+
+  ```math
+  BASE\_ATTACK + 2 \times WEAPON\_DAMAGE
+  ```
+
+  Use the conversion to `double` operator from class `seneca::Dagger` to find out how much damage the dagger can do; this operator can be used with `static_cast`.
+- `int getDefenseAmnt() const`: return the base defense value.
+- `Character* clone() const`: dynamically creates a copy of the current instance and returns its address to the client.
+- `void attack(Character* enemy)`: attacks the enemy received as parameter and inflicts damage to it.
+  - print:
+
+    ```txt
+    [NAME] is attacking [ENEMY_NAME].<endl>
+    ```
+
+  - use the first special ability to activate any beneficial effects on self. **In this design, it is assumed that the type `FirstAbility_t` has a member function named `useAbility(Character*)`** that will activate the special ability; call this function on `m_firstAbility` member and pass the address of the current instance as a parameter.
+  - use the second special ability to activate any beneficial effects on self. **In this design, it is assumed that the type `SecondAbility_t` has a member function named `useAbility(Character*)`** that will activate the special ability; call this function on `m_secondAbility` member and pass the address of the current instance as a parameter.
+  - retrieve the damage this character can do using the function `getAttackAmnt`.
+  - enhance the damage dealt with any effects that the first special ability could apply. **In this design, it is assumed that `FirstAbility_t` has a member function named `transformDamageDealt(int&)`** that will enhance the damage this character can do; call this function on `m_firstAbility` member and pass the damage retrieved earlier.
+  - enhance the damage dealt with any effects that the second special ability could apply. **In this design, it is assumed that `SecondAbility_t` has a member function named `transformDamageDealt(int&)`** that will enhance the damage this character can do; call this function on `m_secondAbility` member and pass the damage calculated earlier.
+
+  - print:
+
+    ```txt
+        Rogue deals [ENHANCED_DAMAGE] melee damage!<endl>
+    ```
+  
+  - apply the damage to the enemy, by calling the `takeDamage()` function on the parameter.
+
+- `void takeDamage(int dmg)`: some other character inflicts damage to the current rogue in the amount specified as parameter. This function will modify the damage received using the defense capabilities and the special abilities, before calling the base class member to update the health.
+
+  - print:
+
+    ```txt
+    [NAME] is attacked for [DAMAGE] damage.<endl>
+        Rogue has a defense of [DEFENSE]. Reducing damage received.<endl>
+    ```
+  
+  - the rogue is able to block some of the damage: subtract the defense amount from the parameter. The new value cannot be less than 0.
+  - use the first special ability to further reduce the damage taken. **In this design, it is assumed that `FirstAbility_t` has a member function named `transformDamageReceived(int&)`** that could block more damage; call this function on `m_firstAbility` member and pass the damage calculated earlier.
+  - use the second special ability to further reduce the damage taken. **In this design, it is assumed that `SecondAbility_t` has a member function named `transformDamageReceived(int&)`** that could block more damage; call this function on `m_secondAbility` member and pass the damage calculated earlier.
+  - call `takeDamage()` from the base class and pass the calculated damage to update the health after taking damage.
+
+
+
+
+### `team` Module
+
+Design and code a class named `Team` that manages a dynamically allocated collection of characters *in the form of an array*. Because `Character` is abstract and cannot be instantiated, this class should work with an array of **pointers** to `Character`. At minimum, this class should store the address of the array and a string with the name of this team; add any other private members and any public special operations that your design requires.
+
+The `Team` is in **composition** relation with `Character`.
 
 #### Public Members
 
 - default constructor
-- destructor
-- move operations
-- `void addEvent(const Event& event)`: add to the array a copy of the event received as a parameter (resize the array if necessary).
-
-#### Friend Helpers
-
-- `operator<<`: print to screen all the events stored in the logger in the format:
+- `Team(const char* name)`: creates a team with the name specified as parameter and no members.
+- rule of 5
+- `void addMember(const Character* c)`: adds the character received as parameter to the team ONLY IF the team doesn't have a character with the same name. Resize the array if necessary. Use the `Character::clone()` function to make a copy of the parameter.
+- `void removeMember(const std::string& c)`: searches the team for a character with the name received as parameter and removes it from the team.
+- `Character* operator[](size_t idx) const`: returns the character ar the index specified as parameter, or null if the index is out of bounds.
+- `void showMembers() const`: prints to screen the content of current object in the format:
 
   ```txt
-  EVENT<endl>
-  EVENT<endl>
-  ...
+  [Team] TEAM_NAME<endl>
+      1: FIRST_CHARACTER<endl>
+      2: SECOND_CHARACTER<endl>
+      3: THIRD_CHARACTER<endl>
+      ...
   ```
+  
+  Use the `operator<<` defined for class `Character` to print a single character. If the team is in an empty state, print `No team.<endl>`.
 
 
 
-### `timeMonitor` Module
+### `guild` Module
 
-Design and code a class named `TimeMonitor` that is useful in measuring the duration of various operations/events. This class should use `chrono` library for time related operations. Add any private members that your design requires.
+Design and code a class named `Guild` that manages a dynamically allocated collection of characters *in the form of an array*. Because `Character` is abstract and cannot be instantiated, this class should work with an array of **pointers** to `Character`. At minimum, this class should store the address of the array and a string with the name of this team; add any other private members and any public special operations that your design requires.
 
-#### Public Members
-
-- `void startEvent(const char* name)`: a new event with the `name` starts; records the time when the event started and the name of the event.
-- `Event stopEvent()`: the current event started earlier by a call to `startEvent` has ended; take the time when it ended, calculate the duration of the event, create an instance of type `Event` and return it to the client.
-
-
-
-### `dictionary` Module
-
-Add to this module the following types:
-
-```cpp
-enum class PartOfSpeech
-{
-  Unknown,
-  Noun,
-  Pronoun,
-  Adjective,
-  Adverb,
-  Verb,
-  Preposition,
-  Conjunction,
-  Interjection,
-};
-struct Word
-{
-  std::string m_word{};
-  std::string m_definition{};
-  PartOfSpeech m_pos = PartOfSpeech::Unknown;
-};
-```
-
-Design and code a class named `Dictionary` that manages a dynamically allocated collection of objects of type `Word` *in the form of an array*. At minimum, this class should store the address of the array; add any other private members that your design requires.
+The `Guild` is in **aggregation** relation with `Character`. All guild members receive extra 300 health points on joining; these points are removed when the character leaves the guild.
 
 #### Public Members
 
 - default constructor
-- `Dictionary(const char* filename)`: loads from the file specified as parameter the collection of words, allocate enough memory (but no more) for the array to store the data, and then load all the words into the array. If the file cannot be open, this function puts the current instance in an empty state.
-
-    When loading the `pos` field from the file, only the following values are considered valid:
-
-    Value found in file | Part of Speech
-    --------------------|-----------------------------
-    `n.`                | `PartOfSpeech::Noun`
-    `n. pl.`            | `PartOfSpeech::Noun`
-    `adv.`              | `PartOfSpeech::Adverb`
-    `a.`                | `PartOfSpeech::Adjective`
-    `v.`                | `PartOfSpeech::Verb`
-    `v. i.`             | `PartOfSpeech::Verb`
-    `v. t.`             | `PartOfSpeech::Verb`
-    `v. t. & i.`        | `PartOfSpeech::Verb`
-    `prep.`             | `PartOfSpeech::Preposition`
-    `pron.`             | `PartOfSpeech::Pronoun`
-    `conj.`             | `PartOfSpeech::Conjunction`
-    `interj.`           | `PartOfSpeech::Interjection`
-
-    Any other value found (or no value whatsoever) is considered to be `PartOfSpeech::Unknown`.
-
-- `void searchWord(const char* word)`: searches in the collection of words the one specified as a parameter. If the word is found, print the definitions in the following format:
+- `Guild(const char* name)`: creates a guild with the name specified as parameter and no members.
+- rule of 5
+- `void addMember(Character* c)`: adds the character received as parameter to the guild ONLY IF it's not already in the guild. Resize the array if necessary. If not already in the guild, increase the max health of the character by 300 points.
+- `void removeMember(const std::string& c)`: searches the team for a character with the name received as parameter and removes it from the team. If found in the guild, decrease the max health of the character by 300 points.
+- `Character* operator[](size_t idx) const`: returns the character at the index specified as parameter, or null if the index is out of bounds.
+- `void showMembers() const`: prints to screen the content of current object in the format:
 
   ```txt
-  WORD - (PART_OF_SPEECH) FIRST_DEFINITION<endl>
-       - (PART_OF_SPEECH) SECOND_DEFINITION<endl>
-       - (PART_OF_SPEECH) THIRD_DEFINITION<endl>
-       ...
+  [Guild] GUILD_NAME<endl>
+      1: FIRST_CHARACTER<endl>
+      2: SECOND_CHARACTER<endl>
+      3: THIRD_CHARACTER<endl>
+      ...
   ```
-
-  Note that only for the first definition the `WORD` is printed; subsequent definitions are indented by the number of characters in the `WORD`.
-
-  If in the global settings `m_show_all` is `false`, then the search stops after the first definition is found, subsequent definitions are ignored, and the function returns.
   
-  If in the global settings `m_verbose` is `false` or the word has `PartOfSpeech::Unknown`, then `(PART_OF_SPEECH)` is not printed.
-
-  If the word does not exist in the dictionary, then this function prints:
-
-  ```txt
-  Word 'WORD' was not found in the dictionary.<endl>
-  ```
-
-Add any other public **special** members that your design requires (without changing the specs above)!
+  Use the `operator<<` defined for class `Character` to print a single character. If the team is in an empty state, print `No guild.<endl>`.
 
 
 
 ### Sample Output
 
-The input file `english_large.csv` and `english_small.csv` are provided.
-
 When the program is started with the command:
 
 ```bash
-ws english_large.csv english_small.csv
+ws
 ```
 
 the output should look like the one from the `sample_output.txt` file.
-
-> [!NOTE]
-> The execution times will be different every time you run the program! Everything else should match.
->
-> See that in the sample output the *move operations* are **many orders of magnitude** faster than the *copy operations*.  If your output does not have such a significant difference in times, keep working on your implementation (the actual numbers will be different every time you run the application).
-
 
 > [!CAUTION]
 > Please note that a matching output is not a guarantee that the program is bug-free; it only means that in the specific tests this tester performed, no bugs/issues were identified. It is possible to write a tester that looks at other aspects of your code that will reveal bugs.
@@ -254,7 +416,7 @@ Upload the source code to your `matrix` account. Compile and run your code using
 Then, run the following command from your account (replace `profname.proflastname` with your professor’s Seneca userid):
 
   ```bash
-  ~profname.proflastname/submit 345_w1
+  ~profname.proflastname/submit 345_w2
   ```
 
 and follow the instructions.
